@@ -1,0 +1,3 @@
+[submodule "external/yara/yara"]
+	path = external/yara/yara
+	url = https://github.com/VirusTotal/yara
