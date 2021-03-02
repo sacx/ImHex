@@ -12,6 +12,7 @@
 #include <cstring>
 #include <random>
 #include <string>
+#include <iostream>
 
 namespace hex::lang {
 
@@ -250,6 +251,7 @@ namespace hex::lang {
 
                 ImGui::TreePop();
             }
+	    std::cout << this->m_pointedAt->getVariableName().c_str() <<"\n";
         }
 
         std::optional<u32> highlightBytes(size_t offset) override {
@@ -483,7 +485,7 @@ namespace hex::lang {
             ImGui::TableNextColumn();
             ImGui::TextColored(ImColor(0xFF9BC64D), "%s", this->m_entries[0]->getTypeName().c_str());
             ImGui::SameLine(0, 0);
-
+	    std::cout << this->m_entries[0]->getTypeName().c_str() << "\n";
             ImGui::TextUnformatted("[");
             ImGui::SameLine(0, 0);
             ImGui::TextColored(ImColor(0xFF00FF00), "%llu", this->m_entries.size());

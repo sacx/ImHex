@@ -1,8 +1,10 @@
 #include <hex/plugin.hpp>
 
 #include <hex/helpers/crypto.hpp>
+#include <hex/helpers/shared_data.hpp>
 
 #include <cctype>
+#include <iostream>
 
 namespace hex::plugin::builtin {
 
@@ -328,6 +330,29 @@ namespace hex::plugin::builtin {
         }
     };
 
+    class NodeWriteDataFile : public dp:: Node{
+    public:	
+        NodeWriteDataFile() : Node("hex.builtin.nodes.data_file.write.header", {
+            dp::Attribute(dp::Attribute::IOType::In, dp::Attribute::Type::Buffer, "hex.builtin.nodes.data_file.write.filename"),
+            dp::Attribute(dp::Attribute::IOType::In, dp::Attribute::Type::Buffer, "hex.builtin.nodes.data_file.write.data") }) {
+	}
+
+        void process() override {
+            auto filename = this->getBufferOnInput(0);
+            auto data = this->getBufferOnInput(1);
+	    if (filename.empty())
+	            throwNodeError("Filename cannot be empty");
+	    auto plf = SharedData::patternLanguageFunctions;
+  	    std::map<std::string, ContentRegistry::PatternLanguageFunctions::Function>::iterator it;
+	    for(it = plf.begin(); it!=plf.end();it++){
+		    std::cout << it->first << std::endl;
+	    }
+
+
+	    this->setFileData(filename,data);
+        }
+    };
+
     class NodeCastIntegerToBuffer : public dp::Node {
     public:
         NodeCastIntegerToBuffer() : Node("hex.builtin.nodes.casting.int_to_buffer.header", {
@@ -579,6 +604,8 @@ namespace hex::plugin::builtin {
 
         ContentRegistry::DataProcessorNode::add<NodeReadData>("hex.builtin.nodes.data_access", "hex.builtin.nodes.data_access.read");
         ContentRegistry::DataProcessorNode::add<NodeWriteData>("hex.builtin.nodes.data_access", "hex.builtin.nodes.data_access.write");
+
+        ContentRegistry::DataProcessorNode::add<NodeWriteDataFile>("hex.builtin.nodes.data_file", "hex.builtin.nodes.data_file.write");
 
         ContentRegistry::DataProcessorNode::add<NodeCastIntegerToBuffer>("hex.builtin.nodes.casting", "hex.builtin.nodes.casting.int_to_buffer");
         ContentRegistry::DataProcessorNode::add<NodeCastBufferToInteger>("hex.builtin.nodes.casting", "hex.builtin.nodes.casting.buffer_to_int");

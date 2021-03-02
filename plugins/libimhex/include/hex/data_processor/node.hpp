@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <hex/data_processor/attribute.hpp>
 
 namespace hex::dp {
@@ -166,6 +167,16 @@ namespace hex::dp {
 
             this->m_overlay->setAddress(address);
             this->m_overlay->getData() = data;
+        }
+
+        void setFileData(std::vector<u8> filename, std::vector<u8> &data) {
+	    std::ofstream ofs;
+	    ofs.open((char *)filename.data(),std::ios::out | std::ios::binary);
+	    if (!ofs.is_open()){
+                throw std::runtime_error("Tried To save that file on disk and it didn't work! ");
+	    }
+	    ofs.write((char *)data.data(),data.size());
+	    ofs.close();
         }
 
     };

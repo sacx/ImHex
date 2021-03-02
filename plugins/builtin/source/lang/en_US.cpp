@@ -313,6 +313,11 @@ namespace hex::plugin::builtin {
                         { "hex.builtin.nodes.display.float.header", "Float display" },
                         { "hex.builtin.nodes.display.float.input", "Value" },
 
+                { "hex.builtin.nodes.data_file", "Data File" },
+		    { "hex.builtin.nodes.data_file.write", "Write" },
+		        {"hex.builtin.nodes.data_file.write.filename", "Filename"},
+		        {"hex.builtin.nodes.data_file.write.data", "data"},
+
                 { "hex.builtin.nodes.data_access", "Data access" },
                     { "hex.builtin.nodes.data_access.read", "Read" },
                         { "hex.builtin.nodes.data_access.read.header", "Read" },
