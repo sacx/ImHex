@@ -14,6 +14,8 @@
 #include <imgui_freetype.h>
 #include <imgui_imhex_extensions.h>
 
+#include <fontawesome_font.h>
+
 #include "helpers/plugin_handler.hpp"
 
 #include <glad/glad.h>
@@ -48,6 +50,7 @@ namespace hex {
         hex::SharedData::mainArgc = argc;
         hex::SharedData::mainArgv = argv;
 
+        this->createDirectories();
         this->initGLFW();
         this->initImGui();
 
@@ -60,12 +63,15 @@ namespace hex {
                         default:
                         case 0: /* Dark theme */
                             ImGui::StyleColorsDark();
+                            ImGui::StyleCustomColorsDark();
                             break;
                         case 1: /* Light theme */
                             ImGui::StyleColorsLight();
+                            ImGui::StyleCustomColorsLight();
                             break;
                         case 2: /* Classic theme */
                             ImGui::StyleColorsClassic();
+                            ImGui::StyleCustomColorsClassic();
                             break;
                     }
                     ImGui::GetStyle().Colors[ImGuiCol_DockingEmptyBg] = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
@@ -191,6 +197,7 @@ namespace hex {
 
         ImVector<ImWchar> ranges;
         ImFontGlyphRangesBuilder glyphRangesBuilder;
+
         glyphRangesBuilder.AddRanges(io.Fonts->GetGlyphRangesDefault());
         glyphRangesBuilder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
         glyphRangesBuilder.AddRanges(io.Fonts->GetGlyphRangesChineseFull());
@@ -200,7 +207,20 @@ namespace hex {
         glyphRangesBuilder.AddRanges(io.Fonts->GetGlyphRangesVietnamese());
         glyphRangesBuilder.BuildRanges(&ranges);
 
-        io.Fonts->AddFontFromFileTTF(path.string().c_str(), std::floor(14.0f * this->m_fontScale), nullptr, ranges.Data); // Needs conversion to char for Windows
+        ImWchar fontAwesomeRange[] = {
+                ICON_MIN_FA, ICON_MAX_FA,
+                0
+        };
+
+        ImFontConfig cfg;
+        cfg.OversampleH = cfg.OversampleV = 1, cfg.PixelSnapH = true;
+        cfg.SizePixels = 13.0f * this->m_fontScale;
+
+        io.Fonts->AddFontFromFileTTF(path.string().c_str(), std::floor(14.0f * this->m_fontScale), &cfg, ranges.Data); // Needs conversion to char for Windows
+        cfg.MergeMode = true;
+
+        io.Fonts->AddFontFromMemoryCompressedTTF(font_awesome_compressed_data, font_awesome_compressed_size, 13.0f * this->m_fontScale, &cfg, fontAwesomeRange);
+
         ImGuiFreeType::BuildFontAtlas(io.Fonts, ImGuiFreeType::Monochrome);
         io.Fonts->GetTexDataAsRGBA32(&px, &w, &h);
 
@@ -493,9 +513,18 @@ namespace hex {
         ImGui::DockBuilderFinish(dockId);
     }
 
-     void Window::initGLFW() {
+    void Window::createDirectories() const {
+        std::filesystem::create_directories(hex::getPath(ImHexPath::Patterns)[0]);
+        std::filesystem::create_directories(hex::getPath(ImHexPath::PatternsInclude)[0]);
+        std::filesystem::create_directories(hex::getPath(ImHexPath::Magic)[0]);
+        std::filesystem::create_directories(hex::getPath(ImHexPath::Plugins)[0]);
+        std::filesystem::create_directories(hex::getPath(ImHexPath::Resources)[0]);
+        std::filesystem::create_directories(hex::getPath(ImHexPath::Config)[0]);
+    }
+
+    void Window::initGLFW() {
         glfwSetErrorCallback([](int error, const char* desc) {
-            fprintf(stderr, "Glfw Error %d: %s\n", error, desc);
+           fprintf(stderr, "Glfw Error %d: %s\n", error, desc);
         });
 
         if (!glfwInit())
@@ -621,29 +650,50 @@ namespace hex {
         io.KeyMap[ImGuiKey_Y]           = GLFW_KEY_Y;
         io.KeyMap[ImGuiKey_Z]           = GLFW_KEY_Z;
 
+        io.UserData = new ImGui::ImHexCustomData();
+
         if (this->m_globalScale != 0.0f)
             style.ScaleAllSizes(this->m_globalScale);
 
-        #if defined(OS_WINDOWS)
-            std::filesystem::path resourcePath = std::filesystem::path((SharedData::mainArgv)[0]).parent_path();
-        #elif defined(OS_LINUX) || defined(OS_MACOS)
-            std::filesystem::path resourcePath = "/usr/share/ImHex";
-        #else
-            std::filesystem::path resourcePath = "";
-            #warning "Unsupported OS for custom font support"
-        #endif
+        std::string fontFile;
+        for (const auto &dir : hex::getPath(ImHexPath::Resources)) {
+            fontFile = dir + "/font.ttf";
+            if (std::filesystem::exists(fontFile))
+                break;
+        }
 
-        if (!resourcePath.empty() && this->setFont(resourcePath / "font.ttf")) {
+        if (this->setFont(fontFile)) {
 
         }
-        else if ((this->m_fontScale != 0.0f) && (this->m_fontScale != 1.0f)) {
+        else {
             io.Fonts->Clear();
 
             ImFontConfig cfg;
             cfg.OversampleH = cfg.OversampleV = 1, cfg.PixelSnapH = true;
             cfg.SizePixels = 13.0f * this->m_fontScale;
             io.Fonts->AddFontDefault(&cfg);
+
+            cfg.MergeMode = true;
+
+            ImWchar fontAwesomeRange[] = {
+                    ICON_MIN_FA, ICON_MAX_FA,
+                    0
+            };
+            std::uint8_t *px;
+            int w, h;
+            io.Fonts->AddFontFromMemoryCompressedTTF(font_awesome_compressed_data, font_awesome_compressed_size, 13.0f * this->m_fontScale, &cfg, fontAwesomeRange);
+            io.Fonts->GetTexDataAsRGBA32(&px, &w, &h);
+
+            // Create new font atlas
+            GLuint tex;
+            glGenTextures(1, &tex);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA8, GL_UNSIGNED_INT, px);
+            io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(tex));
         }
+
 
         style.WindowMenuButtonPosition = ImGuiDir_None;
         style.IndentSpacing = 10.0F;
@@ -658,15 +708,27 @@ namespace hex {
         handler.UserData   = this;
         ImGui::GetCurrentContext()->SettingsHandlers.push_back(handler);
 
+        static std::string iniFileName;
+        for (const auto &dir : hex::getPath(ImHexPath::Config)) {
+            if (std::filesystem::exists(dir)) {
+                iniFileName = dir + "/interface.ini";
+                break;
+            }
+        }
+        io.IniFilename = iniFileName.c_str();
+
         ImGui_ImplGlfw_InitForOpenGL(this->m_window, true);
         ImGui_ImplOpenGL3_Init("#version 150");
     }
 
     void Window::initPlugins() {
-        try {
-            auto pluginFolderPath = std::filesystem::path((SharedData::mainArgv)[0]).parent_path() / "plugins";
-            PluginHandler::load(pluginFolderPath.string());
-        } catch (std::runtime_error &e) { return; }
+        for (const auto &dir : hex::getPath(ImHexPath::Plugins)) {
+            try {
+                PluginHandler::load(dir);
+            } catch (std::runtime_error &e) {
+                // Plugin folder not found. Not a problem.
+            }
+        }
 
         for (const auto &plugin : PluginHandler::getPlugins()) {
             plugin.initializePlugin();
@@ -679,6 +741,8 @@ namespace hex {
     }
 
     void Window::deinitImGui() {
+        delete static_cast<ImGui::ImHexCustomData*>(ImGui::GetIO().UserData);
+
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();

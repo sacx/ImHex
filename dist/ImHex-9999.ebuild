@@ -27,8 +27,8 @@ RDEPEND="${DEPEND}
 		sys-apps/file
 		dev-libs/mbedtls
 		dev-libs/capstone
-		sys-devel/llvm
 		dev-cpp/nlohmann_json
 		media-libs/glm
+		x11-libs/gtk+
 		"
 BDEPEND="${DEPEND}"

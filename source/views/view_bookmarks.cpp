@@ -58,7 +58,7 @@ namespace hex {
                 u32 id = 1;
                 auto bookmarkToRemove = bookmarks.end();
                 for (auto iter = bookmarks.begin(); iter != bookmarks.end(); iter++) {
-                    auto &[region, name, comment, color] = *iter;
+                    auto &[region, name, comment, color, locked] = *iter;
 
                     auto headerColor = ImColor(color);
                     auto hoverColor = ImColor(color);
@@ -87,7 +87,7 @@ namespace hex {
                                 bytesString += "...";
                             }
 
-                            ImGui::TextColored(ImColor(0xFF9BC64D), bytesString.c_str());
+                            ImGui::TextColored(ImColor(0xFF9BC64D), "%s", bytesString.c_str());
                         }
                         if (ImGui::Button("hex.view.bookmarks.button.jump"_lang))
                             View::postEvent(Events::SelectionChangeRequest, region);
@@ -95,18 +95,36 @@ namespace hex {
 
                         if (ImGui::Button("hex.view.bookmarks.button.remove"_lang))
                             bookmarkToRemove = iter;
+                        ImGui::SameLine(0, 15);
+
+                        if (locked) {
+                            if (ImGui::Button(ICON_FA_LOCK)) locked = false;
+                        } else {
+                            if (ImGui::Button(ICON_FA_UNLOCK)) locked = true;
+                        }
 
                         ImGui::NewLine();
                         ImGui::TextUnformatted("hex.view.bookmarks.header.name"_lang);
                         ImGui::Separator();
-                        ImGui::InputText("##nameInput", std::string(name.data()).data(), 64);
-                        ImGui::SameLine();
-                        ImGui::ColorEdit4("hex.view.bookmarks.header.color"_lang, (float*)&headerColor.Value, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha);
+
+                        ImGui::ColorEdit4("hex.view.bookmarks.header.color"_lang, (float*)&headerColor.Value, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha | (locked ? ImGuiColorEditFlags_NoPicker : ImGuiColorEditFlags_None));
                         color = headerColor;
+                        ImGui::SameLine();
+
+                        if (locked)
+                            ImGui::TextUnformatted(name.data());
+                        else
+                            ImGui::InputText("##nameInput", name.data(), 64);
+
                         ImGui::NewLine();
                         ImGui::TextUnformatted("hex.view.bookmarks.header.comment"_lang);
                         ImGui::Separator();
-                        ImGui::InputTextMultiline("##colorInput", std::string(comment.data()).data(), 0xF'FFFF);
+
+                        if (locked)
+                            ImGui::TextWrapped("%s", comment.data());
+                        else
+                            ImGui::InputTextMultiline("##commentInput", comment.data(), 0xF'FFFF);
+
                         ImGui::NewLine();
 
                     }
